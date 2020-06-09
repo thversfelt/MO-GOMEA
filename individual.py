@@ -1,10 +1,7 @@
 class Individual:
-    def __init__(self, genotype, fitness):
+    def __init__(self, genotype):
         self.genotype = genotype
-        self.fitness = fitness
-
-    def evaluateFitness():
-        self.fitness = [1, 5]
+        self.fitness = None
 
     def dominates(self, other):
         if self.fitness == other.fitness:
@@ -17,4 +14,4 @@ class Individual:
         return True
 
     def __str__(self):
-        return str(self.fitness)
+        return self.genotype
