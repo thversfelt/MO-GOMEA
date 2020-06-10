@@ -11,5 +11,5 @@ w_N o1_N o2_N
 N is the number of items
 W is the knapsack capacity
 w_i is the weight of the i-th item
-o1_i is the objective1 of the i-th item
-o2_i is the objective2 of the i-th item
+o1_i is the 1st objective value of the i-th item
+o2_i is the 2nd objective value of the i-th item

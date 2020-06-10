@@ -1,4 +1,4 @@
-class Individual:
+class Solution:
     def __init__(self, genotype):
         self.genotype = genotype
         self.fitness = None
@@ -14,4 +14,4 @@ class Individual:
         return True
 
     def __str__(self):
-        return self.genotype
+        return str(self.genotype)

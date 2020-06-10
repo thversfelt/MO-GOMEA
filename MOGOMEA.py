@@ -1,4 +1,4 @@
-from individual import Individual
+from solution import Solution
 
 class MOGOMEA:
     def __init__(self, n, k, problem):
@@ -8,18 +8,18 @@ class MOGOMEA:
         self.t = 0 # Generation number
         self.t_NIS = 0 # No-improvement stretch
         self.population = []
-        self.elitistArchives = [] # TODO: POSSIBLE CHANGE = REDUCE MEMORY BY ONLY STORING TWO ARCHIVES (t - 1 AND t)
+        self.elitistArchive = [set()] # TODO: POSSIBLE CHANGE = REDUCE MEMORY BY ONLY STORING TWO ARCHIVES (t - 1 AND t)
 
     def run(self, maxEvaluations):
         """Runs the algorithm until an optimum is found or until the maximum amount of evaluations is reached."""
-
         for i in range(self.n):
             self.population.append(self.problem.createRandomSolution())
             self.problem.evaluateFitness(self.population[i])
-            self.updateElitistArchive(self.t, self.population[i])
+            self.updateElitistArchive(self.elitistArchive[self.t], self.population[i])
 
         while self.problem.evaluations < maxEvaluations:
             self.t += 1
+            self.elitistArchive.append(set())
             clusters = self.clusterPopulation(self.population)
 
             selections = []
@@ -45,14 +45,29 @@ class MOGOMEA:
                     ))
             self.population = offspring
 
-            if self.evaluateFitnessElitistArchive(self.elitistArchives[self.t]) != self.evaluateFitnessElitistArchive(self.elitistArchives[self.t - 1]):
+            if self.evaluateFitnessElitistArchive(self.elitistArchive[self.t]) != self.evaluateFitnessElitistArchive(self.elitistArchive[self.t - 1]):
                 self.t_NIS = 0
             else:
                 self.t_NIS += 1
 
-    def updateElitistArchive(self, t, solution):
+    def updateElitistArchive(self, elitistArchive, solution):
         """Updates the elitist archive of generation t using the given solution."""
-        self.elitistArchives.append([])
+        dominates = False
+        dominated = False
+        dominatedElitists = []
+
+        for elitist in elitistArchive:
+            if solution.dominates(elitist):
+                dominates = True
+                dominatedElitists.append(elitist)
+            elif elitist.dominates(solution):
+                dominated = True
+
+        if dominates or not dominated:
+            elitistArchive.add(solution)
+
+        for dominatedElitist in dominatedElitists:
+            elitistArchive.remove(dominatedElitist)
 
     def clusterPopulation(self, population):
         """Clusters the given population in to k clusters."""
@@ -77,7 +92,7 @@ class MOGOMEA:
     def multiObjectiveOptimalMixing(self, solution, cluster, linkageModel):
         """Generates an offspring solution using multi-objective optimal mixing."""
         genotype = [(100, 50), (60, -20), (60, -20)]
-        offspring = Individual(genotype)
+        offspring = Solution(genotype)
         self.updateElitistArchive(self.t, offspring)
         self.problem.evaluateFitness(offspring)
         return offspring
@@ -85,7 +100,7 @@ class MOGOMEA:
     def singleObjectiveOptimalMixing(self, solution, cluster, linkageModel):
         """Generates an offspring solution using single-objective optimal mixing."""
         genotype = [(100, 50), (60, -20), (60, -20)]
-        offspring = Individual(genotype)
+        offspring = Solution(genotype)
         self.updateElitistArchive(self.t, offspring)
         self.problem.evaluateFitness(offspring)
         return offspring
