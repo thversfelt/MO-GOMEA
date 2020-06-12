@@ -1,5 +1,6 @@
 from solution import Solution
-import scipy.spatial
+from cluster import Cluster
+import utilities as util
 
 class MOGOMEA:
     def __init__(self, n, k, problem):
@@ -9,44 +10,36 @@ class MOGOMEA:
         self.t = 0 # Generation number
         self.t_NIS = 0 # No-improvement stretch
         self.population = []
-        self.elitistArchives = [set()] # TODO: POSSIBLE CHANGE = REDUCE MEMORY BY ONLY STORING TWO ARCHIVES (t - 1 AND t)
+        self.elitistArchive = [set()] # TODO: POSSIBLE CHANGE = REDUCE MEMORY BY ONLY STORING TWO ARCHIVES (t - 1 AND t)
+        self.clusters = []
 
     def run(self, maxEvaluations):
         """Runs the algorithm until an optimum is found or until the maximum amount of evaluations is reached."""
         for i in range(self.n):
-            self.population.append(self.problem.createRandomSolution())
-            self.problem.evaluateFitness(self.population[i])
-            self.updateElitistArchive(self.elitistArchives[self.t], self.population[i])
+            solution = self.problem.createRandomSolution()
+            self.population.append(solution)
+            self.problem.evaluateFitness(solution)
+            self.updateElitistArchive(self.elitistArchive[self.t], solution)
 
         while self.problem.evaluations < maxEvaluations:
             self.t += 1
-            self.elitistArchives.append(set())
-            clusters = self.clusterPopulation(self.population)
+            self.elitistArchive.append(set())
+            self.clusters = self.clusterPopulation(self.population)
 
-            selections = []
-            linkageModels = []
-            for j in range(self.k):
-                selections.append(self.tournamentSelection(clusters[j]))
-                linkageModels.append(self.learnLinkageModel(selections[j]))
+            for cluster in self.clusters:
+                selection = self.tournamentSelection(cluster)
+                cluster.learnLinkageModel(selection)
 
             offspring = []
-            for i in range(self.n):
-                j = self.determineClusterIndex(self.population[i], clusters)
-                if not self.isExtremeCluster(clusters[j]):
-                    offspring.append(self.multiObjectiveOptimalMixing(
-                        self.population[i],
-                        clusters[j],
-                        linkageModels[j]
-                    ))
+            for solution in self.population:
+                cluster = self.determineCluster(solution, self.clusters)
+                if not self.isExtremeCluster(cluster):
+                    offspring.append(self.multiObjectiveOptimalMixing(solution, cluster))
                 else:
-                    offspring.append(self.singleObjectiveOptimalMixing(
-                        self.population[i],
-                        clusters[j],
-                        linkageModels[j]
-                    ))
+                    offspring.append(self.singleObjectiveOptimalMixing(solution, cluster))
             self.population = offspring
 
-            if self.evaluateFitnessElitistArchive(self.elitistArchives[self.t]) != self.evaluateFitnessElitistArchive(self.elitistArchives[self.t - 1]):
+            if self.evaluateFitnessElitistArchive(self.elitistArchive[self.t]) != self.evaluateFitnessElitistArchive(self.elitistArchive[self.t - 1]):
                 self.t_NIS = 0
             else:
                 self.t_NIS += 1
@@ -72,72 +65,93 @@ class MOGOMEA:
                 elitistArchive.remove(dominatedElitist)
 
     def clusterPopulation(self, population):
-        """Clusters the given population in to k clusters using k-leader-means clustering."""
+        """Clusters the given population into k clusters using k-leader-means clustering."""
         # TODO: POSSIBLE CHANGE = CALCULATE OPTIMAL k VALUE
 
-        # The first leader is the solution with maximum value in an arbitrary objective.
+        # The first leader is the solution with maximum value in an arbitrary objective
         leaders = [population[0]]
         for solution in population:
             if solution.fitness[0] > leaders[0].fitness[0]:
                 leaders[0] = solution
 
         # The solution with the largest nearest-leader distance is chosen as the next leader,
-        # repeated k - 1 times to obtain k leaders.
+        # repeated k - 1 times to obtain k leaders
         for j in range(self.k - 1):
-            nearestLeaderDistances = {}
+            nearestLeaderDistance = {}
             for solution in population:
                 if solution not in leaders:
-                    nearestLeaderDistance = scipy.spatial.distance.euclidean(solution.fitness, leaders[0].fitness)
+                    nearestLeaderDistance[solution] = util.euclidianDistance(solution.fitness, leaders[0].fitness)
                     for leader in leaders:
-                        distance = scipy.spatial.distance.euclidean(solution.fitness, leader.fitness)
-                        if distance < nearestLeaderDistance:
-                            nearestLeaderDistance = distance
-                    nearestLeaderDistances[solution] = nearestLeaderDistance
-            leader = max(nearestLeaderDistances, key=nearestLeaderDistances.get)
+                        leaderDistance = util.euclidianDistance(solution.fitness, leader.fitness)
+                        if leaderDistance < nearestLeaderDistance[solution]:
+                            nearestLeaderDistance[solution] = leaderDistance
+            leader = max(nearestLeaderDistance, key=nearestLeaderDistance.get)
             leaders.append(leader)
 
-        # Plot the leaders in objective space.
-        import matplotlib.pyplot as plt
-        o_1 = []
-        o_2 = []
+        # k-means clustering is performed with k leaders as the initial cluster means
+        clusters = []
         for leader in leaders:
-            o_1.append(leader.fitness[0])
-            o_2.append(leader.fitness[1])
-        plt.scatter(o_1, o_2)
-        plt.show()
+            clusters.append(Cluster(leader.fitness))
 
-        return [[], []]
+        # Perform k-means clustering until all clusters are unchanged
+        while True in [cluster.changed for cluster in clusters]:
+            for solution in population:
+                nearestCluster = clusters[0]
+                nearestClusterDistance = util.euclidianDistance(solution.fitness, nearestCluster.mean)
+                for cluster in clusters:
+                    clusterDistance = util.euclidianDistance(solution.fitness, cluster.mean)
+                    if clusterDistance < nearestClusterDistance:
+                        nearestCluster = cluster
+                        nearestClusterDistance = clusterDistance
+                nearestCluster.append(solution)
+            for cluster in clusters:
+                cluster.computeMean()
+                cluster.clear()
+
+        # Expand the clusters with the closest c solutions
+        c = int(2 / self.k * len(self.population))
+        for cluster in clusters:
+            distance = {}
+            for solution in population:
+                distance[solution] = util.euclidianDistance(solution.fitness, cluster.mean)
+            for _ in range(c):
+                solution = min(distance.keys(), key=lambda k: distance[k])
+                del distance[solution]
+                cluster.append(solution)
+
+        return clusters
 
     def tournamentSelection(self, cluster):
         """Performs tournament selection in the given cluster"""
         return []
 
-    def learnLinkageModel(self, selection):
-        """Learns a linkage model from the given selection set."""
-        return []
-
-    def determineClusterIndex(self, solution, clusters):
+    def determineCluster(self, solution, clusters):
         """Determines the cluster index of the given solution from the list of clusters."""
-        return 0
+
+        # TODO: In the case of a solution with a single assigned cluster, that cluster is chosen
+        #       In the case of a solution without an assigned cluster, the cluster with the nearest mean is chosen
+        #       In the case of a solution with multiple assigned clusters, a random one of these clusters is chosen
+
+        return clusters[0]
 
     def isExtremeCluster(self, cluster):
         """Determines whether the given cluster is an extreme cluster."""
         return False
 
-    def multiObjectiveOptimalMixing(self, solution, cluster, linkageModel):
+    def multiObjectiveOptimalMixing(self, solution, cluster):
         """Generates an offspring solution using multi-objective optimal mixing."""
         genotype = solution.genotype
         offspring = Solution(genotype)
         self.problem.evaluateFitness(offspring)
-        self.updateElitistArchive(self.elitistArchives[self.t], offspring)
+        self.updateElitistArchive(self.elitistArchive[self.t], offspring)
         return offspring
 
-    def singleObjectiveOptimalMixing(self, solution, cluster, linkageModel):
+    def singleObjectiveOptimalMixing(self, solution, cluster):
         """Generates an offspring solution using single-objective optimal mixing."""
         genotype = solution.genotype
         offspring = Solution(genotype)
         self.problem.evaluateFitness(offspring)
-        self.updateElitistArchive(self.elitistArchives[self.t], offspring)
+        self.updateElitistArchive(self.elitistArchive[self.t], offspring)
         return offspring
 
     def evaluateFitnessElitistArchive(self, elitistArchive):

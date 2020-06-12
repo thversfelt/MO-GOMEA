@@ -1,5 +1,5 @@
 from solution import Solution
-import numpy as np
+import utilities as util
 
 class Knapsack:
     def __init__(self, N, W, searchSpace):
@@ -11,12 +11,10 @@ class Knapsack:
     def createRandomSolution(self):
         """Creates a random solution."""
         # TODO: HOW DO YOU CREATE A RANDOM SOLUTION?
-        genotype = np.random.randint(2, size = self.N).tolist()
-        randomSolution = Solution(genotype)
+        randomSolution = Solution(util.randomGenotype(self.N))
 
         while not self.isValidSolution(randomSolution):
-            genotype = np.random.randint(2, size = self.N).tolist()
-            randomSolution = Solution(genotype)
+            randomSolution = Solution(util.randomGenotype(self.N))
 
         return randomSolution
 
