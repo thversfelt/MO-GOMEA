@@ -1,7 +1,7 @@
 class Solution:
     def __init__(self, genotype):
         self.genotype = genotype
-        self.fitness = None
+        self.fitness = []
 
     def dominates(self, other):
         if self.fitness == other.fitness:

@@ -38,6 +38,11 @@ class Knapsack:
         self.evaluations += 1
 
         solution.fitness = [0, 0]
+
+        # The solution is invalid, so keep the fitness at [0, 0]
+        if not self.isValidSolution(solution):
+            return
+
         for i in range(self.N):
             if solution.genotype[i] == 1:
                 solution.fitness[0] += self.searchSpace[i][1]
