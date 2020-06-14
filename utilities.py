@@ -6,8 +6,5 @@ def euclidianDistance(a, b):
 def hammingDistance(a, b):
     return np.count_nonzero(np.array(a) != np.array(b))
 
-def mean(a):
-    return np.mean(np.array(a)).tolist()
-
 def randomGenotype(n):
     return np.random.randint(2, size=n).tolist()

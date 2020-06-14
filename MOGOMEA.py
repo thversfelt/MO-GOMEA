@@ -29,7 +29,7 @@ class MOGOMEA:
 
             for cluster in self.clusters:
                 selection = self.tournamentSelection(cluster)
-                cluster.learnLinkageModel(selection)
+                cluster.learnLinkageModel(selection, self.problem.N)
 
             offspring = []
             for solution in self.population:
@@ -119,7 +119,6 @@ class MOGOMEA:
                 solution = min(distance.keys(), key=lambda k: distance[k])
                 del distance[solution]
                 cluster.append(solution)
-
         return clusters
 
     def tournamentSelection(self, cluster):
@@ -136,11 +135,9 @@ class MOGOMEA:
 
     def determineCluster(self, solution, clusters):
         """Determines the cluster index of the given solution from the list of clusters."""
-
         # TODO: In the case of a solution with a single assigned cluster, that cluster is chosen
         #       In the case of a solution without an assigned cluster, the cluster with the nearest mean is chosen
         #       In the case of a solution with multiple assigned clusters, a random one of these clusters is chosen
-
         return clusters[0]
 
     def isExtremeCluster(self, cluster):

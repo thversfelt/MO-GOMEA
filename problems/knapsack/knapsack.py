@@ -21,7 +21,6 @@ class Knapsack:
     def isValidSolution(self, solution):
         """Checks if the given solution is valid."""
         w = 0
-
         for i in range(self.N):
             if solution.genotype[i] == 1:
                 w += self.searchSpace[i][0]
@@ -35,12 +34,11 @@ class Knapsack:
         """Evaluates the fitness of a solution."""
         self.evaluations += 1
 
-        solution.fitness = [0, 0]
-
         # The solution is invalid, so keep the fitness at [0, 0]
         if not self.isValidSolution(solution):
             return
 
+        solution.fitness = [0, 0]
         for i in range(self.N):
             if solution.genotype[i] == 1:
                 solution.fitness[0] += self.searchSpace[i][1]
