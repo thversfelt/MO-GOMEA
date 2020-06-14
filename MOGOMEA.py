@@ -1,6 +1,7 @@
 from solution import Solution
 from cluster import Cluster
 import utilities as util
+import random
 
 class MOGOMEA:
     def __init__(self, n, k, problem):
@@ -123,7 +124,15 @@ class MOGOMEA:
 
     def tournamentSelection(self, cluster):
         """Performs tournament selection in the given cluster"""
-        return []
+        selection = []
+        for _ in range(len(cluster.population)):
+            one = random.choice(cluster.population)
+            other = random.choice(cluster.population)
+            if one.dominates(other):
+                selection.append(one)
+            else:
+                selection.append(other)
+        return selection
 
     def determineCluster(self, solution, clusters):
         """Determines the cluster index of the given solution from the list of clusters."""
