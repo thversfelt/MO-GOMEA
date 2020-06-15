@@ -25,7 +25,7 @@ class MOGOMEA:
         while self.problem.evaluations < maxEvaluations:
             self.t += 1
             self.elitistArchive.append(set())
-            self.clusters = self.clusterPopulation(self.population)
+            self.clusters = self.clusterPopulation(self.population, self.k)
 
             for cluster in self.clusters:
                 selection = self.tournamentSelection(cluster)
@@ -65,7 +65,7 @@ class MOGOMEA:
             for dominatedElitist in dominatedElitists:
                 elitistArchive.remove(dominatedElitist)
 
-    def clusterPopulation(self, population):
+    def clusterPopulation(self, population, k):
         """Clusters the given population into k clusters using k-leader-means clustering."""
         # TODO: POSSIBLE CHANGE = CALCULATE OPTIMAL k VALUE
 
@@ -77,7 +77,7 @@ class MOGOMEA:
 
         # The solution with the largest nearest-leader distance is chosen as the next leader,
         # repeated k - 1 times to obtain k leaders
-        for j in range(self.k - 1):
+        for j in range(k - 1):
             nearestLeaderDistance = {}
             for solution in population:
                 if solution not in leaders:
@@ -110,13 +110,13 @@ class MOGOMEA:
                 cluster.clear()
 
         # Expand the clusters with the closest c solutions
-        c = int(2 / self.k * len(self.population))
+        c = int(2 / k * len(self.population))
         for cluster in clusters:
             distance = {}
             for solution in population:
                 distance[solution] = util.euclidianDistance(solution.fitness, cluster.mean)
             for _ in range(c):
-                solution = min(distance.keys(), key=lambda k: distance[k])
+                solution = min(distance.keys(), key=lambda x: distance[x])
                 del distance[solution]
                 cluster.append(solution)
         return clusters

@@ -4,6 +4,7 @@ class Solution:
         self.fitness = []
 
     def dominates(self, other):
+        """Determines whether this solution dominates the given other solution."""
         if self.fitness == other.fitness:
             return False
 

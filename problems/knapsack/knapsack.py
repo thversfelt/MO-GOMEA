@@ -15,7 +15,6 @@ class Knapsack:
 
         while not self.isValidSolution(randomSolution):
             randomSolution = Solution(util.randomGenotype(self.N))
-
         return randomSolution
 
     def isValidSolution(self, solution):
