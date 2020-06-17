@@ -1,10 +1,12 @@
 from solution import Solution
 import utilities as util
+import copy
 
 class Knapsack:
-    def __init__(self, N, W, searchSpace):
-        self.N = N # Number of items in the search space
-        self.W = W # Capacity of the knapsack
+    def __init__(self, m, N, W, searchSpace):
+        self.m = m # Number of objectives.
+        self.N = N # Number of items in the search space.
+        self.W = W # Capacity of the knapsack.
         self.searchSpace = searchSpace
         self.evaluations = 0
 
@@ -33,9 +35,9 @@ class Knapsack:
         """Evaluates the fitness of a solution."""
         self.evaluations += 1
 
-        # The solution is invalid, so keep the fitness at [0, 0]
+        # The solution is invalid, create a new random valid genotype and assign it to the solution.
         if not self.isValidSolution(solution):
-            return
+            solution.genotype = copy.deepcopy(self.createRandomSolution().genotype)
 
         solution.fitness = [0, 0]
         for i in range(self.N):

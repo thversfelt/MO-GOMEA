@@ -55,7 +55,7 @@ def computeMutualInformation(x, y, population):
     return computeEntropy(x, population) + computeEntropy(y, population) - computeJointEntropy(x, y, population)
 
 def computeMutualInformationUPGMA(X, Y, mutualInformationMatrix):
-    """Compute the UPGMA mutual information of variable x and y using the given mutual information matrix."""
+    """Compute the UPGMA mutual information of variable X and Y using the given mutual information matrix."""
     mutualInformationUPGMA = 0
     for x in X:
         for y in Y:
