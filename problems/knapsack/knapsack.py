@@ -1,11 +1,12 @@
 from solution import Solution
 import utilities as util
 import copy
+import numpy as np
 
 class Knapsack:
     def __init__(self, m, N, W, searchSpace):
         self.m = m # Number of objectives.
-        self.N = N # Number of items in the search space.
+        self.N = N # Problem size (number of items in the search space).
         self.W = W # Capacity of the knapsack.
         self.searchSpace = searchSpace
         self.evaluations = 0
@@ -22,9 +23,9 @@ class Knapsack:
     def isValidSolution(self, solution):
         """Checks if the given solution is valid."""
         w = 0
-        for i in range(self.N):
-            if solution.genotype[i] == 1:
-                w += self.searchSpace[i][0]
+        for item in range(self.N):
+            if solution.genotype[item] == 1:
+                w += self.searchSpace[item][0]
 
         if w <= self.W:
             return True
@@ -39,11 +40,11 @@ class Knapsack:
         if not self.isValidSolution(solution):
             solution.genotype = copy.deepcopy(self.createRandomSolution().genotype)
 
-        solution.fitness = [0, 0]
-        for i in range(self.N):
-            if solution.genotype[i] == 1:
-                solution.fitness[0] += self.searchSpace[i][1]
-                solution.fitness[1] += self.searchSpace[i][2]
+        solution.fitness = np.zeros(self.m).tolist()
+        for item in range(self.N):
+            if solution.genotype[item] == 1:
+                for objective in range(self.m):
+                    solution.fitness[objective] += self.searchSpace[item][objective]
 
     def __str__(self):
         return 'TODO'

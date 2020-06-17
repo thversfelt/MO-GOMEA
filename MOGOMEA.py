@@ -14,6 +14,7 @@ class MOGOMEA:
         self.population = []
         self.elitistArchive = [[]] # TODO: POSSIBLE CHANGE = REDUCE MEMORY BY ONLY STORING TWO ARCHIVES (t - 1 AND t)
         self.clusters = []
+        self.extremeClusters = {}
 
     def evolve(self, maxEvaluations):
         """Runs the algorithm until an optimum is found or until the maximum amount of evaluations is reached."""
@@ -27,19 +28,21 @@ class MOGOMEA:
             print(str(self.problem.evaluations / maxEvaluations * 100) + "%")
             self.t += 1
             self.elitistArchive.append(copy.deepcopy(self.elitistArchive[self.t - 1]))
-            self.clusterPopulation(self.population, self.k)
+            self.clusterPopulation()
+            self.determineExtremeClusters()
 
             for cluster in self.clusters:
                 selection = self.tournamentSelection(cluster)
-                cluster.learnLinkageModel(selection, self.problem.N)
+                cluster.learnLinkageModel(selection)
 
             offspring = []
             for solution in self.population:
-                cluster = self.determineCluster(solution, self.clusters)
-                if not self.isExtremeCluster(cluster):
-                    offspring.append(self.multiObjectiveOptimalMixing(solution, cluster, self.elitistArchive[self.t]))
+                cluster = self.determineCluster(solution)
+                if cluster in self.extremeClusters:
+                    objective = random.choice(self.extremeClusters[cluster])
+                    offspring.append(self.singleObjectiveOptimalMixing(objective, solution, cluster, self.elitistArchive[self.t]))
                 else:
-                    offspring.append(self.singleObjectiveOptimalMixing(solution, cluster, self.elitistArchive[self.t]))
+                    offspring.append(self.multiObjectiveOptimalMixing(solution, cluster, self.elitistArchive[self.t]))
             self.population = offspring
 
             if self.evaluateFitnessElitistArchive(self.elitistArchive[self.t]) == self.evaluateFitnessElitistArchive(self.elitistArchive[self.t - 1]):
@@ -47,21 +50,21 @@ class MOGOMEA:
             else:
                self.t_NIS = 0
 
-    def clusterPopulation(self, population, k):
+    def clusterPopulation(self):
         """Clusters the given population into k clusters using balanced k-leader-means clustering."""
         # TODO: POSSIBLE CHANGE = CALCULATE OPTIMAL k VALUE
 
         # The first leader is the solution with maximum value in an arbitrary objective.
-        leaders = [population[0]]
-        for solution in population:
+        leaders = [self.population[0]]
+        for solution in self.population:
             if solution.fitness[0] > leaders[0].fitness[0]:
                 leaders[0] = solution
 
         # The solution with the largest nearest-leader distance is chosen as the next leader,
         # repeated k - 1 times to obtain k leaders.
-        for j in range(k - 1):
+        for j in range(self.k - 1):
             nearestLeaderDistance = {}
-            for solution in population:
+            for solution in self.population:
                 if solution not in leaders:
                     nearestLeaderDistance[solution] = util.euclidianDistance(solution.fitness, leaders[0].fitness)
                     for leader in leaders:
@@ -75,11 +78,12 @@ class MOGOMEA:
         clusters = []
         for leader in leaders:
             mean = leader.fitness
-            clusters.append(Cluster(mean))
+            cluster = Cluster(mean, self.problem)
+            clusters.append(cluster)
 
         # Perform k-means clustering until all clusters are unchanged.
         while True in [cluster.changed for cluster in clusters]:
-            for solution in population:
+            for solution in self.population:
                 nearestCluster = clusters[0]
                 nearestClusterDistance = util.euclidianDistance(solution.fitness, nearestCluster.mean)
                 for cluster in clusters:
@@ -94,10 +98,10 @@ class MOGOMEA:
                 cluster.clear()
 
         # Expand the clusters with the closest c solutions.
-        c = int(2 / k * self.n)
+        c = int(2 / self.k * self.n)
         for cluster in clusters:
             distance = {}
-            for solution in population:
+            for solution in self.population:
                 distance[solution] = util.euclidianDistance(solution.fitness, cluster.mean)
             for _ in range(c):
                 if len(distance) > 0:
@@ -118,32 +122,47 @@ class MOGOMEA:
                 selection.append(other)
         return selection
 
-    def determineCluster(self, solution, clusters):
+    def determineCluster(self, solution):
         """Determines the cluster index of the given solution from the list of clusters."""
 
         # Determine the clusters that are assigned to the solution.
         assignedClusters = []
-        for cluster in clusters:
+        for cluster in self.clusters:
             if solution in cluster.population:
                 assignedClusters.append(cluster)
 
         if len(assignedClusters) > 0:
             # One or more clusters are assigned to the solution, return a random one.
-            return random.choice(clusters)
+            return random.choice(self.clusters)
         else:
             # No clusters are assigned to the solution, return the nearest one.
-            nearestCluster = clusters[0]
+            nearestCluster = self.clusters[0]
             nearestClusterDistance = util.euclidianDistance(solution.fitness, nearestCluster.mean)
-            for cluster in clusters:
+            for cluster in self.clusters:
                 clusterDistance = util.euclidianDistance(solution.fitness, cluster.mean)
                 if clusterDistance < nearestClusterDistance:
                     nearestCluster = cluster
                     nearestClusterDistance = clusterDistance
             return nearestCluster
 
-    def isExtremeCluster(self, cluster):
-        """Determines whether the given cluster is an extreme cluster."""
-        return False
+    def determineExtremeClusters(self):
+        """Determines which clusters are extreme clusters."""
+        extremeClusters = {}
+
+        for one in self.clusters:
+            for objective in range(self.problem.m):
+                isExtreme = True
+                for other in self.clusters:
+                    if other != one:
+                        if other.mean[objective] > one.mean[objective]:
+                            isExtreme = False
+                if isExtreme:
+                    if one in extremeClusters:
+                        extremeClusters[one].append(objective)
+                    else:
+                        extremeClusters[one] = [objective]
+
+        self.extremeClusters = extremeClusters
 
     def multiObjectiveOptimalMixing(self, parent, cluster, elitistArchive):
         """Generates an offspring solution using multi-objective optimal mixing."""
@@ -173,7 +192,6 @@ class MOGOMEA:
                 for index in linkageGroup:
                     offspring.genotype[index] = backup.genotype[index]
                 offspring.fitness = copy.deepcopy(backup.fitness)
-            self.updateElitistArchive(elitistArchive, offspring)
 
         # If the previous mixing step did not change the offspring, repeat the same step, but now pick a random elitist
         # from the elitist archive as a donor. Apply the donor's genotype to the offspring if the mixing results in a
@@ -198,7 +216,6 @@ class MOGOMEA:
                     for index in linkageGroup:
                         offspring.genotype[index] = backup.genotype[index]
                     offspring.fitness = copy.deepcopy(backup.fitness)
-                self.updateElitistArchive(elitistArchive, offspring)
                 if changed: break
 
         # If both previous mixing steps still did not change the offspring, pick a random elitist from the elitist
@@ -208,17 +225,64 @@ class MOGOMEA:
             offspring.genotype = copy.deepcopy(donor.genotype)
             offspring.fitness = copy.deepcopy(donor.fitness)
 
+        self.updateElitistArchive(elitistArchive, offspring)
         return offspring
 
-    def singleObjectiveOptimalMixing(self, parent, cluster, elitistArchive):
+    def singleObjectiveOptimalMixing(self, objective, parent, cluster, elitistArchive):
         """Generates an offspring solution using single-objective optimal mixing."""
-        self.problem.evaluateFitness(parent)
-        self.updateElitistArchive(elitistArchive, parent)
-        return parent
+
+        # Clone the parent solution and create a backup solution.
+        best = copy.deepcopy(parent)
+        offspring = copy.deepcopy(parent)
+        backup = copy.deepcopy(parent)
+        changed = False
+
+        for linkageGroup in cluster.linkageModel:
+            donor = random.choice(cluster.population)
+            for index in linkageGroup:
+                offspring.genotype[index] = donor.genotype[index]
+            self.problem.evaluateFitness(offspring)
+            if offspring.fitness[objective] >= backup.fitness[objective]:
+                for index in linkageGroup:
+                    backup.genotype[index] = offspring.genotype[index]
+                backup.fitness = copy.deepcopy(offspring.fitness)
+                changed = True
+            else:
+                for index in linkageGroup:
+                    offspring.genotype[index] = backup.genotype[index]
+                offspring.fitness = copy.deepcopy(backup.fitness)
+            if donor.fitness[objective] > best.fitness[objective]:
+                best = donor
+
+        if not changed or self.t_NIS > 1 + math.floor(math.log10(self.n)):
+            changed = False
+            for linkageGroup in cluster.linkageModel:
+                donor = best
+                for index in linkageGroup:
+                    offspring.genotype[index] = donor.genotype[index]
+                self.problem.evaluateFitness(offspring)
+                if offspring.fitness[objective] >= backup.fitness[objective]:
+                    for index in linkageGroup:
+                        backup.genotype[index] = offspring.genotype[index]
+                    backup.fitness = copy.deepcopy(offspring.fitness)
+                    changed = True
+                else:
+                    for index in linkageGroup:
+                        offspring.genotype[index] = backup.genotype[index]
+                    offspring.fitness = copy.deepcopy(backup.fitness)
+                if changed: break
+
+        if not changed:
+            donor = best
+            offspring.genotype = copy.deepcopy(donor.genotype)
+            self.problem.evaluateFitness(offspring)
+
+        self.updateElitistArchive(elitistArchive, offspring)
+        return offspring
 
     def updateElitistArchive(self, elitistArchive, solution):
         """Updates the given elitist archive using the given solution."""
-        
+
         # Discard the solution if it is already in the elitist archive.
         for elitist in elitistArchive:
             if elitist.genotype == solution.genotype:

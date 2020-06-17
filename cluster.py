@@ -2,8 +2,9 @@ import numpy as np
 import utilities as util
 
 class Cluster:
-    def __init__(self, mean):
+    def __init__(self, mean, problem):
         self.mean = mean
+        self.problem = problem
         self.population = []
         self.changed = True
         self.linkageModel = []
@@ -18,13 +19,14 @@ class Cluster:
 
     def computeMean(self):
         """Compute the mean of the cluster and determine if it has changed."""
-        mean = [0, 0]
+        mean = np.zeros(self.problem.m).tolist()
 
         # Only compute the mean if the cluster has solutions in its population.
         if len(self.population) > 0:
-            for solution in self.population:
-                mean = [x + y for x, y in zip(mean, solution.fitness)]
-            mean = [x / len(self.population) for x in mean]
+            for objective in range(self.problem.m):
+                for solution in self.population:
+                    mean[objective] += solution.fitness[objective]
+                mean[objective] /= len(self.population)
 
         if mean != self.mean:
             self.mean = mean
@@ -32,20 +34,20 @@ class Cluster:
         else:
             self.changed = False
 
-    def learnLinkageModel(self, population, N):
+    def learnLinkageModel(self, selection):
         """Learns the linkage model using the Unweighted Pair Grouping Method with Arithmetic-mean (UPGMA) procedure."""
 
         # Compute the mutual information N-by-N matrix, where N is the problem size (amount of variables).
-        mutualInformationMatrix = np.zeros((N, N))
-        for x in range(N):
+        mutualInformationMatrix = np.zeros((self.problem.N, self.problem.N))
+        for x in range(self.problem.N):
             for y in range(x):
-                mutualInformationMatrix[x][y] = util.computeMutualInformation(x, y, population)
+                mutualInformationMatrix[x][y] = util.computeMutualInformation(x, y, selection)
                 mutualInformationMatrix[y][x] = mutualInformationMatrix[x][y]
 
         # Initialize the subsets and linkage model with all univariate subsets.
         subsets = []
         linkageModel = []
-        for x in range(N):
+        for x in range(self.problem.N):
             subsets.append([x])
             linkageModel.append([x])
 
