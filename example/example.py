@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 # Import a knapsack instance.
 instance = []
-file = open('../problems/knapsack/instances/dense/40.txt')
+file = open('../problems/knapsack/instances/dense/80.txt')
 for line in file:
     line = line.split()
     line = [int(i) for i in line]
@@ -16,22 +16,13 @@ W = instance[0][1] # Knapsack capacity.
 searchSpace = instance[1:] # Problem search space.
 problem = Knapsack(m, N, W, searchSpace)
 
-n = 1000 # Population size.
+n = 100 # Population size.
 k = 3 # Amount of clusters.
 algorithm = MOGOMEA(n, k, problem)
 
 # Run the algorithm.
 maxEvaluations = 1000000
 algorithm.evolve(maxEvaluations)
-
-# Plot the final population.
-o_1 = []
-o_2 = []
-for solution in algorithm.population:
-    o_1.append(solution.fitness[0])
-    o_2.append(solution.fitness[1])
-plt.scatter(o_1, o_2)
-plt.show()
 
 # Plot the initial and final pareto fronts.
 for t in [0, algorithm.t]:

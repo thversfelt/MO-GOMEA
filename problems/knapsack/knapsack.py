@@ -38,13 +38,16 @@ class Knapsack:
 
         # The solution is invalid, create a new random valid genotype and assign it to the solution.
         if not self.isValidSolution(solution):
-            solution.genotype = copy.deepcopy(self.createRandomSolution().genotype)
+            solution.fitness = [-2147483648, -2147483648]
+            return
 
         solution.fitness = np.zeros(self.m).tolist()
         for item in range(self.N):
             if solution.genotype[item] == 1:
                 for objective in range(self.m):
-                    solution.fitness[objective] += self.searchSpace[item][objective]
+                    # Offset the objective index by 1, because the first column is the item weight.
+                    value = self.searchSpace[item][1 + objective]
+                    solution.fitness[objective] += value
 
     def __str__(self):
         return 'TODO'

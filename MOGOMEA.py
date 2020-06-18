@@ -25,7 +25,12 @@ class MOGOMEA:
             self.updateElitistArchive(self.elitistArchive[self.t], solution)
 
         while self.problem.evaluations < maxEvaluations:
+            if self.t_NIS > 1 + math.floor(math.log10(self.n)):
+                print("No improvement found in the pareto front.")
+                break
+
             print(str(self.problem.evaluations / maxEvaluations * 100) + "%")
+
             self.t += 1
             self.elitistArchive.append(copy.deepcopy(self.elitistArchive[self.t - 1]))
             self.clusterPopulation()
@@ -229,7 +234,7 @@ class MOGOMEA:
         return offspring
 
     def singleObjectiveOptimalMixing(self, objective, parent, cluster, elitistArchive):
-        """Generates an offspring solution using single-objective optimal mixing."""
+        """Generates an offspring solution using single-objective optimal mixing with the given objective."""
 
         # Clone the parent solution and create a backup solution.
         best = copy.deepcopy(parent)
