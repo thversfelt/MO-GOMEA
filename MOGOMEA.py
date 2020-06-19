@@ -181,38 +181,14 @@ class MOGOMEA:
         # the mixing results in an improved, equally good or side-stepped solution.
         for linkageGroup in cluster.linkageModel:
             donor = random.choice(cluster.population)
-            # backupEqual = True
+            unchanged = True
             for index in linkageGroup:
                 offspring.genotype[index] = donor.genotype[index]
-                # if offspring.genotype[index] != backup.genotype[index]:
-                #     backupEqual = False
-            # if not backupEqual:
-            self.problem.evaluateFitness(offspring)
-            if offspring.dominates(backup) or offspring.fitness == backup.fitness or not self.dominatedByElitistArchive(elitistArchive, offspring):
-                for index in linkageGroup:
-                    backup.genotype[index] = offspring.genotype[index]
-                backup.fitness = copy.deepcopy(offspring.fitness)
-                changed = True
-            else:
-                for index in linkageGroup:
-                    offspring.genotype[index] = backup.genotype[index]
-                offspring.fitness = copy.deepcopy(backup.fitness)
-
-        # If the previous mixing step did not change the offspring, repeat the same step, but now pick a random elitist
-        # from the elitist archive as a donor. Apply the donor's genotype to the offspring if the mixing results in a
-        # direct domination or a pareto front improvement.
-        if not changed or self.t_NIS > 1 + math.floor(math.log10(self.n)):
-            changed = False
-            for linkageGroup in cluster.linkageModel:
-                donor = random.choice(elitistArchive)
-                # backupEqual = True
-                for index in linkageGroup:
-                    offspring.genotype[index] = donor.genotype[index]
-                    # if offspring.genotype[index] != backup.genotype[index]:
-                    #     backupEqual = False
-                # if not backupEqual:
+                if offspring.genotype[index] != backup.genotype[index]:
+                    unchanged = False
+            if not unchanged:
                 self.problem.evaluateFitness(offspring)
-                if offspring.dominates(backup) or (not self.dominatedByElitistArchive(elitistArchive, offspring) and not self.fitnessContainedInElitistArchive(elitistArchive, offspring)):
+                if offspring.dominates(backup) or offspring.fitness == backup.fitness or not self.dominatedByElitistArchive(elitistArchive, offspring):
                     for index in linkageGroup:
                         backup.genotype[index] = offspring.genotype[index]
                     backup.fitness = copy.deepcopy(offspring.fitness)
@@ -221,6 +197,30 @@ class MOGOMEA:
                     for index in linkageGroup:
                         offspring.genotype[index] = backup.genotype[index]
                     offspring.fitness = copy.deepcopy(backup.fitness)
+
+        # If the previous mixing step did not change the offspring, repeat the same step, but now pick a random elitist
+        # from the elitist archive as a donor. Apply the donor's genotype to the offspring if the mixing results in a
+        # direct domination or a pareto front improvement.
+        if not changed or self.t_NIS > 1 + math.floor(math.log10(self.n)):
+            changed = False
+            for linkageGroup in cluster.linkageModel:
+                donor = random.choice(elitistArchive)
+                unchanged = True
+                for index in linkageGroup:
+                    offspring.genotype[index] = donor.genotype[index]
+                    if offspring.genotype[index] != backup.genotype[index]:
+                        unchanged = False
+                if not unchanged:
+                    self.problem.evaluateFitness(offspring)
+                    if offspring.dominates(backup) or (not self.dominatedByElitistArchive(elitistArchive, offspring) and not self.fitnessContainedInElitistArchive(elitistArchive, offspring)):
+                        for index in linkageGroup:
+                            backup.genotype[index] = offspring.genotype[index]
+                        backup.fitness = copy.deepcopy(offspring.fitness)
+                        changed = True
+                    else:
+                        for index in linkageGroup:
+                            offspring.genotype[index] = backup.genotype[index]
+                        offspring.fitness = copy.deepcopy(backup.fitness)
                 if changed: break
 
         # If both previous mixing steps still did not change the offspring, pick a random elitist from the elitist
@@ -244,27 +244,12 @@ class MOGOMEA:
 
         for linkageGroup in cluster.linkageModel:
             donor = random.choice(cluster.population)
+            unchanged = True
             for index in linkageGroup:
                 offspring.genotype[index] = donor.genotype[index]
-            self.problem.evaluateFitness(offspring)
-            if offspring.fitness[objective] >= backup.fitness[objective]:
-                for index in linkageGroup:
-                    backup.genotype[index] = offspring.genotype[index]
-                backup.fitness = copy.deepcopy(offspring.fitness)
-                changed = True
-            else:
-                for index in linkageGroup:
-                    offspring.genotype[index] = backup.genotype[index]
-                offspring.fitness = copy.deepcopy(backup.fitness)
-            if donor.fitness[objective] > best.fitness[objective]:
-                best = donor
-
-        if not changed or self.t_NIS > 1 + math.floor(math.log10(self.n)):
-            changed = False
-            for linkageGroup in cluster.linkageModel:
-                donor = best
-                for index in linkageGroup:
-                    offspring.genotype[index] = donor.genotype[index]
+                if offspring.genotype[index] != backup.genotype[index]:
+                    unchanged = False
+            if not unchanged:
                 self.problem.evaluateFitness(offspring)
                 if offspring.fitness[objective] >= backup.fitness[objective]:
                     for index in linkageGroup:
@@ -275,12 +260,35 @@ class MOGOMEA:
                     for index in linkageGroup:
                         offspring.genotype[index] = backup.genotype[index]
                     offspring.fitness = copy.deepcopy(backup.fitness)
+                if donor.fitness[objective] > best.fitness[objective]:
+                    best = donor
+
+        if not changed or self.t_NIS > 1 + math.floor(math.log10(self.n)):
+            changed = False
+            for linkageGroup in cluster.linkageModel:
+                donor = best
+                unchanged = True
+                for index in linkageGroup:
+                    offspring.genotype[index] = donor.genotype[index]
+                    if offspring.genotype[index] != backup.genotype[index]:
+                        unchanged = False
+                if not unchanged:
+                    self.problem.evaluateFitness(offspring)
+                    if offspring.fitness[objective] >= backup.fitness[objective]:
+                        for index in linkageGroup:
+                            backup.genotype[index] = offspring.genotype[index]
+                        backup.fitness = copy.deepcopy(offspring.fitness)
+                        changed = True
+                    else:
+                        for index in linkageGroup:
+                            offspring.genotype[index] = backup.genotype[index]
+                        offspring.fitness = copy.deepcopy(backup.fitness)
                 if changed: break
 
         if not changed:
             donor = best
             offspring.genotype = copy.deepcopy(donor.genotype)
-            self.problem.evaluateFitness(offspring)
+            offspring.fitness = copy.deepcopy(donor.fitness)
 
         self.updateElitistArchive(elitistArchive, offspring)
         return offspring
@@ -293,16 +301,36 @@ class MOGOMEA:
             if elitist.genotype == solution.genotype:
                 return
 
+        # Replace elitist by solution if the solution is further away from the nearest archive neighbor of the
+        # elitist, based on the Hamming distance.
+        # TODO: POSSIBLE CHANGE = CHOOSE A DIFFERENT METRIC TO ENSURE DIVERSITY IN THE ARCHIVE
+        for i, elitist in enumerate(elitistArchive):
+            if elitist.fitness == solution.fitness:
+                nearestElitist = None
+                if i == 0:
+                    nearestElitist = elitistArchive[i + 1]
+                else:
+                    nearestElitist = elitistArchive[i - 1]
+                nearestNeighborDistance = util.hammingDistance(elitist.genotype, nearestElitist.genotype)
+                for otherElitist in elitistArchive:
+                    if elitist != otherElitist:
+                        distance = util.euclidianDistance(elitist.genotype, otherElitist.genotype)
+                        if distance < nearestNeighborDistance:
+                            nearestElitist = otherElitist
+                            nearestNeighborDistance = distance
+
+                solutionDistance = util.hammingDistance(solution.genotype, nearestElitist.genotype)
+                if solutionDistance < nearestNeighborDistance:
+                    elitistArchive[i] = solution
+                    return
+
         # Determine if the solution is dominated by elitists, and determine which elitists are dominated by
         # the solution.
         dominatedElitists = []
         for elitist in elitistArchive:
-            # TODO: IF solution.fitness = elitist.fitness, REPLACE ELITIST BY SOLUTION IF THE SOLUTION IS FURTHER
-            #       AWAY FROM THE NEAREST ARCHIVE NEIGHBOR OF THE ELITIST BASED ON THE HAMMING DISTANCE
-            # TODO: POSSIBLE CHANGE = CHOOSE A DIFFERENT METRIC TO ENSURE DIVERSITY IN THE ARCHIVE
             if elitist.dominates(solution):
                 return
-            elif solution.dominates(elitist):
+            if solution.dominates(elitist):
                 dominatedElitists.append(elitist)
 
         # Remove elitists that are dominated by the solution.

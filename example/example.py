@@ -21,7 +21,7 @@ k = 3 # Amount of clusters.
 algorithm = MOGOMEA(n, k, problem)
 
 # Run the algorithm.
-maxEvaluations = 1000000
+maxEvaluations = 10**5
 algorithm.evolve(maxEvaluations)
 
 # Plot the initial and final pareto fronts.

@@ -36,7 +36,7 @@ class Knapsack:
         """Evaluates the fitness of a solution."""
         self.evaluations += 1
 
-        # The solution is invalid, create a new random valid genotype and assign it to the solution.
+        # The solution is invalid, set its fitness to a very low value.
         if not self.isValidSolution(solution):
             solution.fitness = [-2147483648, -2147483648]
             return
