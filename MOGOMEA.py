@@ -370,6 +370,3 @@ class MOGOMEA:
         for solution in elitistArchive:
             fitness = [x + y for x, y in zip(fitness, solution.fitness)]
         return fitness
-
-    def __str__(self):
-        return 'TODO'

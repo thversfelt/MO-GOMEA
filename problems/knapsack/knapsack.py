@@ -36,6 +36,3 @@ class Knapsack:
                     # Offset the objective index by 1, because the first column is the item weight.
                     value = self.searchSpace[item][1 + objective]
                     solution.fitness[objective] += value
-
-    def __str__(self):
-        return 'TODO'

@@ -76,6 +76,3 @@ class Cluster:
             linkageModel.append(combinedPair)
 
         self.linkageModel = linkageModel
-
-    def __str__(self):
-        return 'TODO'
