@@ -19,11 +19,11 @@ class Cluster:
 
     def computeMean(self):
         """Compute the mean of the cluster and determine if it has changed."""
-        mean = np.zeros(self.problem.m).tolist()
+        mean = np.zeros(self.problem.numberOfObjectives).tolist()
 
         # Only compute the mean if the cluster has solutions in its population.
         if len(self.population) > 0:
-            for objective in range(self.problem.m):
+            for objective in range(self.problem.numberOfObjectives):
                 for solution in self.population:
                     mean[objective] += solution.fitness[objective]
                 mean[objective] /= len(self.population)
@@ -38,8 +38,8 @@ class Cluster:
         """Learns the linkage model using the Unweighted Pair Grouping Method with Arithmetic-mean (UPGMA) procedure."""
 
         # Compute the mutual information N-by-N matrix, where N is the problem size (amount of variables).
-        mutualInformationMatrix = np.zeros((self.problem.N, self.problem.N))
-        for x in range(self.problem.N):
+        mutualInformationMatrix = np.zeros((self.problem.problemSize, self.problem.problemSize))
+        for x in range(self.problem.problemSize):
             for y in range(x):
                 mutualInformationMatrix[x][y] = util.computeMutualInformation(x, y, selection)
                 mutualInformationMatrix[y][x] = mutualInformationMatrix[x][y]
@@ -47,7 +47,7 @@ class Cluster:
         # Initialize the subsets and linkage model with all univariate subsets.
         subsets = []
         linkageModel = []
-        for x in range(self.problem.N):
+        for x in range(self.problem.problemSize):
             subsets.append([x])
             linkageModel.append([x])
 

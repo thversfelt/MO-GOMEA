@@ -10,27 +10,27 @@ for line in file:
     line = [int(i) for i in line]
     instance.append(line)
 
-m = 2 # Number of objectives.
-N = instance[0][0] # # Problem size (number of items in the search space).
-W = instance[0][1] # Knapsack capacity.
+numberOfObjectives = 2
+problemSize = instance[0][0] # Number of items in the search space.
+capacity = instance[0][1] # Knapsack capacity.
 searchSpace = instance[1:] # Problem search space.
-problem = Knapsack(m, N, W, searchSpace)
+problem = Knapsack(numberOfObjectives, problemSize, capacity, searchSpace)
 
-n = 100 # Population size.
-k = 3 # Amount of clusters.
-algorithm = MOGOMEA(n, k, problem)
+populationSize = 100
+amountOfClusters = 3
+maxEvaluations = 10**5 # Maximum amount of fitness evaluations.
 
-# Run the algorithm.
-maxEvaluations = 10**5
-algorithm.evolve(maxEvaluations)
+# Initialize and run the algorithm.
+algorithm = MOGOMEA(populationSize, amountOfClusters, problem, maxEvaluations)
+algorithm.evolve()
 
 # Plot the initial and final pareto fronts.
-for t in [0, algorithm.t]:
-    o_1 = []
-    o_2 = []
-    for elitist in algorithm.elitistArchive[t]:
-        o_1.append(elitist.fitness[0])
-        o_2.append(elitist.fitness[1])
-    plt.scatter(o_1, o_2, label=("Generation " + str(t)))
+for generation in [0, algorithm.currentGeneration]:
+    firstObjective = []
+    secondObjective = []
+    for elitist in algorithm.elitistArchive[generation]:
+        firstObjective.append(elitist.fitness[0])
+        secondObjective.append(elitist.fitness[1])
+    plt.scatter(firstObjective, secondObjective, label=("Generation " + str(generation)))
 plt.legend()
 plt.show()

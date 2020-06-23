@@ -1,3 +1,4 @@
+from solution import Solution
 from cluster import Cluster
 import utilities as util
 import random
@@ -5,34 +6,32 @@ import copy
 import math
 
 class MOGOMEA:
-    def __init__(self, n, k, problem):
-        self.n = n # Population size
-        self.k = k # Amount of clusters
-        self.problem = problem # Problem type
-        self.t = 0 # Generation number
-        self.t_NIS = 0 # No-improvement stretch
+    def __init__(self, populationSize, amountOfClusters, problem, maxEvaluations):
+        self.populationSize = populationSize
+        self.amountOfClusters = amountOfClusters
+        self.problem = problem
+        self.evaluations = 0 # Number of evaluations
+        self.maxEvaluations = maxEvaluations
+        self.currentGeneration = 0 # Generation number
+        self.noImprovementStretch = 0 # No-improvement stretch
         self.population = []
         self.elitistArchive = [[]] # TODO: POSSIBLE CHANGE = REDUCE MEMORY BY ONLY STORING TWO ARCHIVES (t - 1 AND t)
         self.clusters = []
         self.extremeClusters = {}
 
-    def evolve(self, maxEvaluations):
+    def evolve(self):
         """Runs the algorithm until an optimum is found or until the maximum amount of evaluations is reached."""
-        for i in range(self.n):
-            solution = self.problem.createRandomSolution()
+        for _ in range(self.populationSize):
+            solution = self.createRandomSolution()
             self.population.append(solution)
-            self.problem.evaluateFitness(solution)
-            self.updateElitistArchive(self.elitistArchive[self.t], solution)
+            self.evaluateFitness(solution)
+            self.updateElitistArchive(self.elitistArchive[self.currentGeneration], solution)
 
-        while self.problem.evaluations < maxEvaluations:
-            if self.t_NIS > 1 + math.floor(math.log10(self.n)):
-                print("No improvement found in the pareto front.")
-                break
+        while self.evaluations < self.maxEvaluations and self.noImprovementStretch < 1 + 2 * math.floor(math.log10(self.populationSize)):
+            print(str(self.evaluations / self.maxEvaluations * 100) + "%")
 
-            print(str(self.problem.evaluations / maxEvaluations * 100) + "%")
-
-            self.t += 1
-            self.elitistArchive.append(copy.deepcopy(self.elitistArchive[self.t - 1]))
+            self.currentGeneration += 1
+            self.elitistArchive.append(copy.deepcopy(self.elitistArchive[self.currentGeneration - 1]))
             self.clusterPopulation()
             self.determineExtremeClusters()
 
@@ -45,15 +44,29 @@ class MOGOMEA:
                 cluster = self.determineCluster(solution)
                 if cluster in self.extremeClusters:
                     objective = random.choice(self.extremeClusters[cluster])
-                    offspring.append(self.singleObjectiveOptimalMixing(objective, solution, cluster, self.elitistArchive[self.t]))
+                    offspring.append(self.singleObjectiveOptimalMixing(objective, solution, cluster, self.elitistArchive[self.currentGeneration]))
                 else:
-                    offspring.append(self.multiObjectiveOptimalMixing(solution, cluster, self.elitistArchive[self.t]))
+                    offspring.append(self.multiObjectiveOptimalMixing(solution, cluster, self.elitistArchive[self.currentGeneration]))
             self.population = offspring
 
-            if self.evaluateFitnessElitistArchive(self.elitistArchive[self.t]) == self.evaluateFitnessElitistArchive(self.elitistArchive[self.t - 1]):
-               self.t_NIS += 1
+            if self.evaluateFitnessElitistArchive(self.elitistArchive[self.currentGeneration]) == self.evaluateFitnessElitistArchive(self.elitistArchive[self.currentGeneration - 1]):
+               self.noImprovementStretch += 1
             else:
-               self.t_NIS = 0
+               self.noImprovementStretch = 0
+
+    def createRandomSolution(self):
+        """Creates a random solution."""
+        # TODO: HOW DO YOU CREATE A RANDOM SOLUTION?
+        randomSolution = Solution(util.randomGenotype(self.problem.problemSize))
+
+        while not self.problem.isValidSolution(randomSolution):
+            randomSolution = Solution(util.randomGenotype(self.problem.problemSize))
+        return randomSolution
+
+    def evaluateFitness(self, solution):
+        """Evaluates the fitness of the given solution."""
+        self.evaluations += 1
+        self.problem.evaluateFitness(solution)
 
     def clusterPopulation(self):
         """Clusters the given population into k clusters using balanced k-leader-means clustering."""
@@ -67,7 +80,7 @@ class MOGOMEA:
 
         # The solution with the largest nearest-leader distance is chosen as the next leader,
         # repeated k - 1 times to obtain k leaders.
-        for j in range(self.k - 1):
+        for _ in range(self.amountOfClusters - 1):
             nearestLeaderDistance = {}
             for solution in self.population:
                 if solution not in leaders:
@@ -103,7 +116,7 @@ class MOGOMEA:
                 cluster.clear()
 
         # Expand the clusters with the closest c solutions.
-        c = int(2 / self.k * self.n)
+        c = int(2 / self.amountOfClusters * self.populationSize)
         for cluster in clusters:
             distance = {}
             for solution in self.population:
@@ -155,7 +168,7 @@ class MOGOMEA:
         extremeClusters = {}
 
         for one in self.clusters:
-            for objective in range(self.problem.m):
+            for objective in range(self.problem.numberOfObjectives):
                 isExtreme = True
                 for other in self.clusters:
                     if other != one:
@@ -187,7 +200,7 @@ class MOGOMEA:
                 if offspring.genotype[index] != backup.genotype[index]:
                     unchanged = False
             if not unchanged:
-                self.problem.evaluateFitness(offspring)
+                self.evaluateFitness(offspring)
                 if offspring.dominates(backup) or offspring.fitness == backup.fitness or not self.dominatedByElitistArchive(elitistArchive, offspring):
                     for index in linkageGroup:
                         backup.genotype[index] = offspring.genotype[index]
@@ -201,7 +214,7 @@ class MOGOMEA:
         # If the previous mixing step did not change the offspring, repeat the same step, but now pick a random elitist
         # from the elitist archive as a donor. Apply the donor's genotype to the offspring if the mixing results in a
         # direct domination or a pareto front improvement.
-        if not changed or self.t_NIS > 1 + math.floor(math.log10(self.n)):
+        if not changed or self.noImprovementStretch > 1 + math.floor(math.log10(self.populationSize)):
             changed = False
             for linkageGroup in cluster.linkageModel:
                 donor = random.choice(elitistArchive)
@@ -211,7 +224,7 @@ class MOGOMEA:
                     if offspring.genotype[index] != backup.genotype[index]:
                         unchanged = False
                 if not unchanged:
-                    self.problem.evaluateFitness(offspring)
+                    self.evaluateFitness(offspring)
                     if offspring.dominates(backup) or (not self.dominatedByElitistArchive(elitistArchive, offspring) and not self.fitnessContainedInElitistArchive(elitistArchive, offspring)):
                         for index in linkageGroup:
                             backup.genotype[index] = offspring.genotype[index]
@@ -250,7 +263,7 @@ class MOGOMEA:
                 if offspring.genotype[index] != backup.genotype[index]:
                     unchanged = False
             if not unchanged:
-                self.problem.evaluateFitness(offspring)
+                self.evaluateFitness(offspring)
                 if offspring.fitness[objective] >= backup.fitness[objective]:
                     for index in linkageGroup:
                         backup.genotype[index] = offspring.genotype[index]
@@ -263,7 +276,7 @@ class MOGOMEA:
                 if donor.fitness[objective] > best.fitness[objective]:
                     best = donor
 
-        if not changed or self.t_NIS > 1 + math.floor(math.log10(self.n)):
+        if not changed or self.noImprovementStretch > 1 + math.floor(math.log10(self.populationSize)):
             changed = False
             for linkageGroup in cluster.linkageModel:
                 donor = best
@@ -273,7 +286,7 @@ class MOGOMEA:
                     if offspring.genotype[index] != backup.genotype[index]:
                         unchanged = False
                 if not unchanged:
-                    self.problem.evaluateFitness(offspring)
+                    self.evaluateFitness(offspring)
                     if offspring.fitness[objective] >= backup.fitness[objective]:
                         for index in linkageGroup:
                             backup.genotype[index] = offspring.genotype[index]
@@ -306,7 +319,6 @@ class MOGOMEA:
         # TODO: POSSIBLE CHANGE = CHOOSE A DIFFERENT METRIC TO ENSURE DIVERSITY IN THE ARCHIVE
         for i, elitist in enumerate(elitistArchive):
             if elitist.fitness == solution.fitness:
-                nearestElitist = None
                 if i == 0:
                     nearestElitist = elitistArchive[i + 1]
                 else:
