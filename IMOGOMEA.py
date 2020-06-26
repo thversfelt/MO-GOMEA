@@ -5,10 +5,11 @@ import random
 import copy
 import math
 
-class MOGOMEA:
-    def __init__(self, populationSize, amountOfClusters, problem, maxEvaluations):
+class IMOGOMEA:
+    def __init__(self, populationSize, amountOfClusters, mutationRate, problem, maxEvaluations):
         self.populationSize = populationSize
         self.amountOfClusters = amountOfClusters
+        self.mutationRate = mutationRate
         self.problem = problem
         self.evaluations = 0 # Number of evaluations
         self.maxEvaluations = maxEvaluations
@@ -243,12 +244,28 @@ class MOGOMEA:
                         offspring.fitness = copy.deepcopy(backup.fitness)
                 if changed: break
 
-        # If both previous mixing steps still did not change the offspring, pick a random elitist from the elitist
+        # If previous mixing steps did not change the offspring, pick a random elitist from the elitist archive
+        # and mutate its genotype. Only apply the mutation if the mutation results in a direct domination or a
+        # pareto front improvement.
+        if not changed:
+            donor = random.choice(elitistArchive)
+            offspring.genotype = copy.deepcopy(donor.genotype)
+            self.mutate(offspring)
+            if offspring.genotype != donor.genotype:
+                self.evaluateFitness(offspring)
+                if offspring.dominates(backup) or (not self.dominatedByElitistArchive(elitistArchive, offspring) and not self.fitnessContainedInElitistArchive(elitistArchive, offspring)):
+                    changed = True
+
+        # If previous mixing steps still did not change the offspring, pick a random elitist from the elitist
         # archive as a donor and apply the full donor's genotype to the offspring.
         if not changed:
             donor = random.choice(elitistArchive)
             offspring.genotype = copy.deepcopy(donor.genotype)
             offspring.fitness = copy.deepcopy(donor.fitness)
+
+        # if not self.problem.isFeasibleSolution(offspring):
+        #     self.problem.greedyRepair(offspring)
+        #     self.evaluateFitness(offspring)
 
         self.updateElitistArchive(elitistArchive, offspring)
         return offspring
@@ -308,7 +325,20 @@ class MOGOMEA:
         if not changed:
             donor = best
             offspring.genotype = copy.deepcopy(donor.genotype)
+            self.mutate(offspring)
+            if offspring.genotype != donor.genotype:
+                self.evaluateFitness(offspring)
+                if offspring.fitness[objective] >= backup.fitness[objective]:
+                    changed = True
+
+        if not changed:
+            donor = best
+            offspring.genotype = copy.deepcopy(donor.genotype)
             offspring.fitness = copy.deepcopy(donor.fitness)
+
+        # if not self.problem.isFeasibleSolution(offspring):
+        #     self.problem.greedyRepair(offspring)
+        #     self.evaluateFitness(offspring)
 
         self.updateElitistArchive(elitistArchive, offspring)
         return offspring
@@ -316,7 +346,7 @@ class MOGOMEA:
     def updateElitistArchive(self, elitistArchive, solution):
         """Updates the given elitist archive using the given solution."""
 
-        # Discard the solution if it is already in the elitist archive.
+        # Discard the solution if it has the same genotype as an elitist in the elitist archive.
         for elitist in elitistArchive:
             if elitist.genotype == solution.genotype:
                 return
@@ -376,3 +406,12 @@ class MOGOMEA:
         for solution in elitistArchive:
             fitness = [x + y for x, y in zip(fitness, solution.fitness)]
         return fitness
+
+    def mutate(self, solution):
+        """Mutates the given solution."""
+        for index in range(len(solution.genotype)):
+            if random.random() < self.mutationRate:
+                if solution.genotype[index] == 0:
+                    solution.genotype[index] = 1
+                else:
+                    solution.genotype[index] = 0
